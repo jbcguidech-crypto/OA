@@ -494,6 +494,8 @@ function renderHome(v){
     if(!rows.length)return;
     var st=el('div','section-t',bk.t);st.style.marginTop='16px';v.appendChild(st);
     rows.forEach(function(e){v.appendChild(exRow(e));});
+    var play=rows.filter(function(e){return e.player!=='info';});
+    if(play.length>=2){var _pids=play.map(function(e){return e.id;});var lb=el('button','btn sm block','▶ Lancer le bloc ('+play.length+' exos)');lb.style.marginTop='4px';lb.onclick=function(){startBlock(_pids);};v.appendChild(lb);}
   });
   v.appendChild(el('div','section-t','Apaisement express'));
   ['sigh','coh'].forEach(id=>v.appendChild(exRow(exById(id))));
@@ -651,9 +653,9 @@ function renderDetail(v,id){
 }
 
 /* ---- player engine ---- */
-let activeTimers=[],cancelled=false;
+let activeTimers=[],cancelled=false;let chain=[];
 function clearTimers(){activeTimers.forEach(t=>{clearTimeout(t);clearInterval(t);});activeTimers=[];}
-function closePlayer(){cancelled=true;clearTimers();releaseWake();$('#playerRoot').innerHTML='';}
+function closePlayer(){cancelled=true;clearTimers();releaseWake();chain=[];$('#playerRoot').innerHTML='';}
 function logSession(name){sessions.push({t:new Date().toISOString(),name:name});if(sessions.length>200)sessions=sessions.slice(-200);save('sf_sess',sessions);}
 function playerShell(title,bodyHtml){
   cancelled=false;clearTimers();
@@ -662,6 +664,9 @@ function playerShell(title,bodyHtml){
     '<div class="pstage" id="pstage">'+(bodyHtml||'')+'</div><div class="pctrl" id="pctrl"></div>';
   $('#playerRoot').innerHTML='';$('#playerRoot').appendChild(p);requestWake();return p;
 }
+function startBlock(ids){var play=ids.map(exById).filter(function(e){return e&&e.player!=='info';});if(!play.length)return;chain=play.slice(1).map(function(e){return e.id;});openPlayer(play[0]);}
+function chainNext(){var id=chain.shift(),e=exById(id);cancelled=true;clearTimers();$('#playerRoot').innerHTML='';if(e){setTimeout(function(){openPlayer(e);},60);}else{releaseWake();}}
+function doneBtn(){return chain.length?('<button class="btn block primary" onclick="chainNext()">Suivant · '+(exById(chain[0])?exById(chain[0]).name:'')+' ›</button>'):'<button class="btn block primary" onclick="closePlayer()">Fermer</button>';}
 function openPlayer(e){
   if(e.player==='pacer')playPacer(e);
   else if(e.player==='bolt')playBolt(e);
@@ -735,7 +740,7 @@ function finishPacer(e){
   var ob=$('#orb');if(ob)ob.classList.remove('holding');
   $('#psub').textContent='Belle séance. Laisse la 1re respiration rester calme.';
   $('#orb').style.transform='scale(.7)';
-  $('#pctrl').innerHTML='<button class="btn block primary" onclick="closePlayer()">Fermer</button>';
+  $('#pctrl').innerHTML=''+doneBtn()+'';
 }
 
 function playBolt(e){
@@ -759,7 +764,7 @@ function finishBolt(sc){
   logSession('Test BOLT');const z=boltZone(sc);
   $('#phase').textContent='Score enregistré';$('#ptimer').textContent=sc+'s';
   $('#pstage').innerHTML+='<div class="zone-pill" style="background:'+z.c+'22;color:'+z.c+';border:1px solid '+z.c+'55">'+z.l+'</div><div class="subt">'+boltAdvice(sc)+'</div>';
-  $('#pctrl').innerHTML='<button class="btn block primary" onclick="closePlayer();go(\'home\')">Voir ma routine</button>';
+  $('#pctrl').innerHTML=chain.length?doneBtn():'<button class="btn block primary" onclick="closePlayer();go(\'home\')">Voir ma routine</button>';
   refreshChip();
 }
 function boltAdvice(s){
@@ -784,7 +789,7 @@ function playHold(e){
       $('#ptimer').textContent=sc+'s';
       if(e.id==='retmax')$('#pstage').innerHTML+='<div class="subt note-amber">≈ 50 % = '+Math.round(sc/2)+' s → durée pour ta table CO₂.</div>';
       $('#pstage').innerHTML+='<div class="subt note-teal">Récupération : 6 souffles nettoyants (courts, calmes). Reste assis 15 s.</div>';
-      $('#pctrl').innerHTML='<button class="btn block primary" onclick="closePlayer()">Fermer</button>';
+      $('#pctrl').innerHTML=''+doneBtn()+'';
     };
   };
 }
@@ -824,7 +829,7 @@ async function playApnea(e){
     phase.textContent='Séance terminée';timer.textContent='✓';timer.className='bigtimer';
     var _mx=holds.length?Math.max.apply(null,holds):0;if(_mx)logApnea(_mx);
     sub.innerHTML=holds.length+' apnées · moyenne '+avg+'s · max '+(holds.length?Math.max.apply(null,holds):0)+'s';
-    ctrl('<button class="btn block primary" onclick="closePlayer()">Fermer</button>');
+    ctrl(''+doneBtn()+'');
   }
   ctrl('<button class="btn block primary" id="b">Commencer</button>');$('#b').onclick=doHold;
 }
@@ -872,7 +877,7 @@ async function runTable(hold,rounds,rest0){
     beep(880,0.18);vibe([30,40,30]);logSession('Table CO₂');
     $('#phase').textContent='Table terminée';$('#ptimer').textContent='✓';$('#ptimer').className='bigtimer';
     $('#psub').textContent='Récup : 6 souffles nettoyants, reste assis 15 s. Une seule table/jour.';
-    $('#pctrl').innerHTML='<button class="btn block primary" onclick="closePlayer()">Fermer</button>';
+    $('#pctrl').innerHTML=''+doneBtn()+'';
   }catch(x){}
 }
 
@@ -921,7 +926,7 @@ async function runO2Table(hold0,rounds,rest,step){
     beep(880,0.18);vibe([30,40,30]);logSession('Table O₂');
     $('#phase').textContent='Table terminée';$('#ptimer').textContent='✓';$('#ptimer').className='bigtimer';
     $('#psub').textContent='Récup : 6 souffles nettoyants, reste assis 15 s. Une seule table/jour.';
-    $('#pctrl').innerHTML='<button class="btn block primary" onclick="closePlayer()">Fermer</button>';
+    $('#pctrl').innerHTML=''+doneBtn()+'';
   }catch(x){}
 }
 function playReps(e){
@@ -935,7 +940,7 @@ function playReps(e){
   function finish(){logSession(e.name);
     $('#phase').textContent='Séance terminée';$('#ptimer').textContent='✓';
     $('#psub').textContent=cf.sets+' séries effectuées. Récupère bien.';
-    ctrl('<button class="btn block primary" onclick="closePlayer()">Fermer</button>');
+    ctrl(''+doneBtn()+'');
   }
   function startSet(){
     set++;$('#cs').textContent=set;$('#ptimer').textContent='Série '+set+'/'+cf.sets;
@@ -1188,7 +1193,7 @@ function safetyGate(force){
   o.querySelector('#ackBtn').onclick=function(){save('sf_safety',true);o.remove();};
 }
 if(settings.light&&document.body)document.body.classList.add('light');
-var APP_VERSION='1.1';
+var APP_VERSION='1.2';
 var _v=document.getElementById('ver');if(_v)_v.textContent='v'+APP_VERSION;
 var wakeLock=null;
 async function requestWake(){try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');}}catch(e){}}
