@@ -468,21 +468,56 @@ function renderHome(v){
     _bn.innerHTML='<div class="field-t" style="color:'+_bc+'">État du jour · Phase '+_r.phase+(_r.dropping?' · BOLT en baisse':'')+'</div><div class="muted">'+_r.msg+'</div>';
     v.appendChild(_bn);
   }
-  v.appendChild(el('div','section-t','Routine du jour'));
-  var _dm=doneMap();var _todo=suggestRoutine(s).map(exById).filter(function(e){return e&&!_dm[e.name];});
-  if(_todo.length){_todo.forEach(function(e){v.appendChild(exRow(e));});}
-  else{v.appendChild(el('div','muted','✓ Routine du jour terminée. Beau travail.'));}
+  var _dm=doneMap();var _plan=dayPlan();
+  var _tot=0,_done=0;
+  _plan.forEach(function(bk){bk.ids.forEach(function(id){var e=exById(id);if(!e)return;_tot++;if(_dm[e.name])_done++;});});
+  var _hdr=el('div','section-t','Ta journée · '+_done+'/'+_tot);
+  v.appendChild(_hdr);
+  if(_tot>0){
+    var _pb=el('div');_pb.style.cssText='height:6px;border-radius:99px;background:var(--card2);overflow:hidden;margin:0 2px 12px';
+    _pb.innerHTML='<div style="height:100%;width:'+Math.round(_done/_tot*100)+'%;background:linear-gradient(90deg,var(--teal),var(--tealD));border-radius:99px"></div>';
+    v.appendChild(_pb);
+  }
+  if(_done>=_tot&&_tot>0){v.appendChild(el('div','muted','✓ Journée bouclée. Beau travail — laisse le souffle tranquille.'));}
+  _plan.forEach(function(bk){
+    var rows=bk.ids.map(exById).filter(function(e){return e&&!_dm[e.name];});
+    if(!rows.length)return;
+    var st=el('div','section-t',bk.t);st.style.marginTop='16px';v.appendChild(st);
+    rows.forEach(function(e){v.appendChild(exRow(e));});
+  });
   v.appendChild(el('div','section-t','Apaisement express'));
   ['sigh','coh'].forEach(id=>v.appendChild(exRow(exById(id))));
   var _sp=el('button','btn block','Respirer par sport & intensité ›');_sp.style.marginTop='16px';_sp.onclick=function(){go('sport');};v.appendChild(_sp);
   v.appendChild(el('div','disclaimer','Fondé sur la méthode Oxygen Advantage et la littérature. Ne remplace pas un avis médical.'));
 }
-function suggestRoutine(s){
-  if(s==null)return['bolt','light','coh'];
-  if(readiness().deload)return['bolt','light','coh','unblock'];
-  if(s<30)return['bolt','light','apnea','o2table','coh'];
-  if(s<40)return['bolt','light','apnea','co2table','o2table'];
-  return['bolt','light','apnea','o2table','vhl'];
+function dayBlock(s){
+  // bloc du midi selon le jour de semaine, calibré par la zone (0=dim..6=sam)
+  var d=new Date().getDay();
+  if(s<30){ // reprise : intensité modérée, souplesse très présente
+    return [null,['apnea','ribmob'],['co2table'],['apnea','diadrop'],null,['co2table','ribmob'],['apnea','mbt']][d]||null;
+  }
+  // programme complet
+  return [null,['apnea','ribmob'],['vhl'],['co2table','diadrop'],null,['o2table'],['apnea','ribmob','mbt']][d]||null;
+}
+function dayPlan(){
+  var s=lastBolt(),r=readiness();
+  if(s==null)return [{t:'Commence ici',ids:['bolt','light','coh']}];
+  if(r.deload){
+    return [
+      {t:'Matin',ids:['unblock','bolt','light','coh']},
+      {t:'Journée',ids:['diadrop']},
+      {t:'Fin d’après-midi',ids:['unblock','light']},
+      {t:'Soir',ids:['sigh','478']}
+    ];
+  }
+  var noon=dayBlock(s);
+  var plan=[
+    {t:'Matin',ids:['unblock','bolt','light','coh']},
+    noon?{t:'Midi — bloc du jour',ids:noon}:{t:'Midi — récupération',ids:['light','diadrop']},
+    {t:'Fin d’après-midi',ids:['unblock','light']},
+    {t:'Soir',ids:['sigh','478','nadi']}
+  ];
+  return plan;
 }
 
 function renderCats(v){
@@ -1091,7 +1126,7 @@ function renderInfo(v){
   epo.innerHTML='<div class="field-t">EPO &amp; altitude — au juste</div><div class="muted">L’EPO est surtout déclenchée par l’<b>hypoxie</b> (rein, voie HIF). La voie fiable = <b>altitude</b> réelle ou simulée. L’<b>apnée</b> provoque une contraction de la rate (↑ hémoglobine transitoire) et une hausse d’EPO jusqu’à ~5 h après l’effort — mais de façon nette seulement avec des apnées <b>longues et intenses</b>, chez des pratiquants <b>expérimentés</b>. Tes apnées courtes (VHL) donnent surtout des gains <b>métaboliques</b> (CO₂/lactate, RSA), pas un vrai gain hématologique durable.</div>';
   v.appendChild(epo);
   var _poly=el('div','block');
-  _poly.innerHTML='<div class="field-t">Nez bouché (polypose) : débouche d’abord</div><div class="muted">La respiration nasale continue n’est pas possible telle quelle : <b>débouche</b> (le CO₂ rouvre le nez), puis capitalise sur la fenêtre dégagée pour la respiration légère et la cohérence. Vise ~3 débouchages/jour (matin, midi, fin d’après-midi) et ~30 min de légère. Le suivi ORL reste indispensable — ce cadre gère les symptômes, il ne traite pas la polypose.</div>';
+  _poly.innerHTML='<div class="field-t">La structure de la journée</div><div class="muted"><b>Ouvre le nez, puis travaille dans la fenêtre.</b> La décongestion (le CO₂ rouvre les voies) démarre le matin et la fin d’après-midi : elle prépare le terrain pour la respiration légère, la cohérence et les apnées. Le <b>bloc du midi</b> porte l’intensité du jour (apnée, tables, VHL ou souplesse selon le jour et ta zone). Le soir ramène au calme (soupir, 4-7-8). Vise ~30 min de respiration douce par jour. La <b>souplesse diaphragme/côtes</b> et la relaxation comptent autant que l’intensité pour allonger l’apnée. Si le nez reste durablement bouché malgré la pratique, un avis ORL s’impose.</div>';
   v.appendChild(_poly);
   var _hb=el('div','block');
   _hb.innerHTML='<div class="field-t">Micro-mouvements pendant l’apnée</div><div class="muted">Pendant une apnée longue, de petits mouvements respiratoires « à vide » calment l’envie de respirer (réflexe de Hering-Breuer). <b>Micro-inspire</b> : soulage le mieux mais regonfle un peu → réduit le stimulus altitude ⇒ à réserver aux séries max / tolérance CO₂. <b>Micro-expire</b> : effet moindre mais <b>préserve la désaturation</b> ⇒ compatible exhale-hold / altitude. Déglutir soulage aussi.</div>';
