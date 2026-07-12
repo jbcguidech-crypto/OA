@@ -175,6 +175,7 @@ let boltHist=load('sf_bolt',[]);
 let sessions=load('sf_sess',[]);
 let settings=load('sf_set',{sound:true,vibe:true});
 let metrics=load('sf_metrics',[]);
+let timers=load('sf_timers',{});
 function todayMetric(){return metrics.filter(function(m){return m.t===todayISO();})[0];}
 function saveMetric(o){var m=todayMetric();if(!m){m={t:todayISO()};metrics.push(m);}for(var k in o)m[k]=o[k];if(metrics.length>400)metrics=metrics.slice(-400);save('sf_metrics',metrics);}
 function logApnea(v){if(!v)return;var m=todayMetric();var cur=(m&&m.apnea)?m.apnea:0;saveMetric({apnea:Math.max(cur,v)});}
@@ -425,7 +426,8 @@ const EXPLAIN={
 function exById(id){return EX.find(e=>e.id===id);}
 function exByCat(c){return EX.filter(e=>e.cat===c);}
 
-let cur='home';
+let cur='home';let showDone=false;
+function doneMap(){var t=todayISO(),m={};sessions.forEach(function(s){if((s.t||'').slice(0,10)===t)m[s.name]=1;});return m;}
 function setNav(n){document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.nav===n));}
 function go(where,arg){
   cur=where;const v=$('#view');
@@ -467,7 +469,9 @@ function renderHome(v){
     v.appendChild(_bn);
   }
   v.appendChild(el('div','section-t','Routine du jour'));
-  suggestRoutine(s).forEach(id=>{const e=exById(id);if(e)v.appendChild(exRow(e));});
+  var _dm=doneMap();var _todo=suggestRoutine(s).map(exById).filter(function(e){return e&&!_dm[e.name];});
+  if(_todo.length){_todo.forEach(function(e){v.appendChild(exRow(e));});}
+  else{v.appendChild(el('div','muted','✓ Routine du jour terminée. Beau travail.'));}
   v.appendChild(el('div','section-t','Apaisement express'));
   ['sigh','coh'].forEach(id=>v.appendChild(exRow(exById(id))));
   var _sp=el('button','btn block','Respirer par sport & intensité ›');_sp.style.marginTop='16px';_sp.onclick=function(){go('sport');};v.appendChild(_sp);
@@ -502,13 +506,17 @@ function renderCatList(v,catId){
   v.appendChild(el('div','kicker',cat.desc));
   v.appendChild(el('h1','h-hero display',cat.name));
   if(catId==='mov')v.appendChild(el('div','safety','<b>Avancé · risque de syncope.</b> Faim d’air modérée, jamais après hyperventilation ni dans l’eau, près du sol, idéalement accompagné. Stop au moindre vertige.'));
-  exByCat(catId).forEach(e=>v.appendChild(exRow(e)));
+  var _dm=doneMap();var _all=exByCat(catId);var _done=_all.filter(function(e){return _dm[e.name];});
+  (showDone?_all:_all.filter(function(e){return !_dm[e.name];})).forEach(function(e){v.appendChild(exRow(e,_dm[e.name]));});
+  if(_done.length&&!showDone){var _tg=el('button','btn sm ghost','Afficher les '+_done.length+' fait(s) aujourd’hui');_tg.style.marginTop='6px';_tg.onclick=function(){showDone=true;go('catlist',catId);};v.appendChild(_tg);}
+  else if(showDone&&_done.length){var _tg2=el('button','btn sm ghost','Masquer les exercices faits');_tg2.style.marginTop='6px';_tg2.onclick=function(){showDone=false;go('catlist',catId);};v.appendChild(_tg2);}
 }
-function exRow(e){
+function exRow(e,done){
   const cat=CATS.find(c=>c.id===e.cat);
   const r=el('button','ex');r.onclick=()=>go('detail',e.id);
+  if(done)r.style.opacity='.55';
   r.innerHTML='<div class="badge" style="background:'+cat.col+'1f;color:'+cat.col+'">'+cat.ic+'</div>'+
-    '<div class="meta"><b>'+e.name+'</b><small>'+e.benefit+'</small></div>'+
+    '<div class="meta"><b>'+e.name+(done?' ✓':'')+'</b><small>'+e.benefit+'</small></div>'+
     '<div class="freq">'+e.freq+'</div><div class="chev">›</div>';
   return r;
 }
@@ -530,6 +538,59 @@ function renderDetail(v,id){
   const b=el('div','block');
   b.innerHTML='<div class="field-t">Mise en place</div><div class="muted" style="margin-bottom:12px">'+e.setup+'</div><div class="field-t">Exécution</div>';
   const ol=el('ol','steps');e.steps.forEach(s=>ol.appendChild(el('li',null,s)));b.appendChild(ol);v.appendChild(b);
+  if(e.player==='pacer'){
+    var _pc=e.pacer,_ov=timers[e.id]||{};
+    var _is='width:74px;text-align:right;background:var(--card2);border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:6px;font-family:inherit;font-size:14px';
+    var tblk=el('div','block');var html='<div class="field-t">Ajuster les durées</div>';
+    _pc.phases.forEach(function(ph,i){var val=(_ov.phases&&_ov.phases[i]!=null)?_ov.phases[i]:ph.d;html+='<div class="kv"><span>'+ph.l+' (s)</span><input class="tPh" data-ph="'+i+'" type="number" step="0.5" min="1" value="'+val+'" style="'+_is+'"></div>';});
+    if(_pc.secs!=null){var _mv=Math.round((_ov.secs!=null?_ov.secs:_pc.secs)/60);html+='<div class="kv"><span>Durée totale (min)</span><input id="tSecs" type="number" min="1" value="'+_mv+'" style="'+_is+'"></div>';}
+    if(_pc.cycles!=null){var _cv=(_ov.cycles!=null?_ov.cycles:_pc.cycles);html+='<div class="kv" style="border-bottom:none"><span>Nombre de cycles</span><input id="tCyc" type="number" min="1" value="'+_cv+'" style="'+_is+'"></div>';}
+    tblk.innerHTML=html;v.appendChild(tblk);
+    var brow=el('div','row');brow.style.marginTop='8px';
+    var bs=el('button','btn sm','Enregistrer');bs.style.flex='1';var br=el('button','btn sm ghost','Réinitialiser');br.style.flex='1';
+    brow.appendChild(bs);brow.appendChild(br);v.appendChild(brow);
+    bs.onclick=function(){var o={},phs=[];document.querySelectorAll('.tPh').forEach(function(inp){var val=parseFloat(inp.value);phs[+inp.dataset.ph]=(isNaN(val)||val<=0)?_pc.phases[+inp.dataset.ph].d:val;});o.phases=phs;var ts=document.getElementById('tSecs');if(ts){var mn=parseInt(ts.value,10);if(mn>0)o.secs=mn*60;}var tc=document.getElementById('tCyc');if(tc){var cy=parseInt(tc.value,10);if(cy>0)o.cycles=cy;}timers[e.id]=o;save('sf_timers',timers);beep(740,0.1);vibe(20);go('detail',e.id);};
+    br.onclick=function(){delete timers[e.id];save('sf_timers',timers);go('detail',e.id);};
+  }
+  if(e.player==='apnea'){
+    var _is='width:74px;text-align:right;background:var(--card2);border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:6px;font-family:inherit;font-size:14px';var _ov=timers[e.id]||{},_cf=e.apnea;
+    var _tb=el('div','block');
+    _tb.innerHTML='<div class="field-t">Réglages par défaut</div>'+
+      '<div class="kv"><span>Nombre d’apnées</span><input id="aR" type="number" min="1" value="'+(_ov.rounds!=null?_ov.rounds:_cf.rounds)+'" style="'+_is+'"></div>'+
+      '<div class="kv"><span>Respiration réduite (s)</span><input id="aRed" type="number" min="0" value="'+(_ov.reduced!=null?_ov.reduced:_cf.reduced)+'" style="'+_is+'"></div>'+
+      '<div class="kv" style="border-bottom:none"><span>Récupération (s)</span><input id="aRec" type="number" min="1" value="'+(_ov.recover!=null?_ov.recover:_cf.recover)+'" style="'+_is+'"></div>';
+    v.appendChild(_tb);
+    var _bw=el('div','row');_bw.style.marginTop='8px';var _bsv=el('button','btn sm','Enregistrer');_bsv.style.flex='1';var _brs=el('button','btn sm ghost','Réinitialiser');_brs.style.flex='1';_bw.appendChild(_bsv);_bw.appendChild(_brs);v.appendChild(_bw);
+    _bsv.onclick=function(){var r=parseInt(document.getElementById('aR').value,10),rd=parseInt(document.getElementById('aRed').value,10),rc=parseInt(document.getElementById('aRec').value,10);var o={};if(r>0)o.rounds=r;if(rd>=0)o.reduced=rd;if(rc>0)o.recover=rc;timers[e.id]=o;save('sf_timers',timers);beep(740,0.1);vibe(20);go('detail',e.id);};
+    _brs.onclick=function(){delete timers[e.id];save('sf_timers',timers);go('detail',e.id);};
+  }
+  if(e.player==='table'){
+    var _is='width:74px;text-align:right;background:var(--card2);border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:6px;font-family:inherit;font-size:14px';var _ov=timers[e.id]||{},_b=lastBolt(),_r=load('sf_retmax',null);
+    var _dh=_r?Math.round(_r/2):(_b||20),_drest=Math.max(40,Math.round(75-0.7*(_b||20)));
+    var _tb=el('div','block');
+    _tb.innerHTML='<div class="field-t">Réglages par défaut</div>'+
+      '<div class="kv"><span>Durée d’apnée (s)</span><input id="cH" type="number" min="5" value="'+(_ov.hold!=null?_ov.hold:_dh)+'" style="'+_is+'"></div>'+
+      '<div class="kv"><span>Nombre d’apnées</span><input id="cR" type="number" min="1" value="'+(_ov.rounds!=null?_ov.rounds:8)+'" style="'+_is+'"></div>'+
+      '<div class="kv" style="border-bottom:none"><span>Repos de départ (s)</span><input id="cRest" type="number" min="10" value="'+(_ov.rest0!=null?_ov.rest0:_drest)+'" style="'+_is+'"></div>';
+    v.appendChild(_tb);
+    var _bw=el('div','row');_bw.style.marginTop='8px';var _bsv=el('button','btn sm','Enregistrer');_bsv.style.flex='1';var _brs=el('button','btn sm ghost','Réinitialiser');_brs.style.flex='1';_bw.appendChild(_bsv);_bw.appendChild(_brs);v.appendChild(_bw);
+    _bsv.onclick=function(){var h=parseInt(document.getElementById('cH').value,10),r=parseInt(document.getElementById('cR').value,10),rs=parseInt(document.getElementById('cRest').value,10);var o={};if(h>0)o.hold=h;if(r>0)o.rounds=r;if(rs>0)o.rest0=rs;timers[e.id]=o;save('sf_timers',timers);beep(740,0.1);vibe(20);go('detail',e.id);};
+    _brs.onclick=function(){delete timers[e.id];save('sf_timers',timers);go('detail',e.id);};
+  }
+  if(e.player==='o2table'){
+    var _is='width:74px;text-align:right;background:var(--card2);border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:6px;font-family:inherit;font-size:14px';var _ov=timers[e.id]||{},_b=lastBolt(),_r=load('sf_retmax',null);
+    var _dh=_r?Math.round(_r/2):(_b||20),_drest=Math.max(60,Math.round(90-0.5*(_b||20)));
+    var _tb=el('div','block');
+    _tb.innerHTML='<div class="field-t">Réglages par défaut</div>'+
+      '<div class="kv"><span>Apnée de départ (s)</span><input id="oH" type="number" min="5" value="'+(_ov.hold0!=null?_ov.hold0:_dh)+'" style="'+_is+'"></div>'+
+      '<div class="kv"><span>Nombre d’apnées</span><input id="oR" type="number" min="1" value="'+(_ov.rounds!=null?_ov.rounds:6)+'" style="'+_is+'"></div>'+
+      '<div class="kv"><span>Incrément / apnée (s)</span><input id="oStep" type="number" min="1" value="'+(_ov.step!=null?_ov.step:10)+'" style="'+_is+'"></div>'+
+      '<div class="kv" style="border-bottom:none"><span>Repos fixe (s)</span><input id="oRest" type="number" min="20" value="'+(_ov.rest!=null?_ov.rest:_drest)+'" style="'+_is+'"></div>';
+    v.appendChild(_tb);
+    var _bw=el('div','row');_bw.style.marginTop='8px';var _bsv=el('button','btn sm','Enregistrer');_bsv.style.flex='1';var _brs=el('button','btn sm ghost','Réinitialiser');_brs.style.flex='1';_bw.appendChild(_bsv);_bw.appendChild(_brs);v.appendChild(_bw);
+    _bsv.onclick=function(){var h=parseInt(document.getElementById('oH').value,10),r=parseInt(document.getElementById('oR').value,10),st=parseInt(document.getElementById('oStep').value,10),rs=parseInt(document.getElementById('oRest').value,10);var o={};if(h>0)o.hold0=h;if(r>0)o.rounds=r;if(st>0)o.step=st;if(rs>0)o.rest=rs;timers[e.id]=o;save('sf_timers',timers);beep(740,0.1);vibe(20);go('detail',e.id);};
+    _brs.onclick=function(){delete timers[e.id];save('sf_timers',timers);go('detail',e.id);};
+  }
   if(e.safety)v.appendChild(el('div','safety','<b>Sécurité.</b> '+e.safety));
   if(e.player!=='info'){
     const bolt=lastBolt();
@@ -567,8 +628,16 @@ function openPlayer(e){
 }
 function sleep(ms){return new Promise(function(res,rej){const t=setTimeout(function(){cancelled?rej('x'):res();},ms);activeTimers.push(t);});}
 
+function pacerCfg(e){
+  var base=e.pacer,ov=timers[e.id]||{};
+  var phases=base.phases.map(function(ph,i){return {l:ph.l,k:ph.k,d:(ov.phases&&ov.phases[i]!=null)?ov.phases[i]:ph.d};});
+  var cfg={kind:base.kind,phases:phases,note:base.note};
+  if(base.cycles!=null)cfg.cycles=(ov.cycles!=null?ov.cycles:base.cycles);
+  if(base.secs!=null)cfg.secs=(ov.secs!=null?ov.secs:base.secs);
+  return cfg;
+}
 function playPacer(e){
-  const cfg=e.pacer;
+  const cfg=pacerCfg(e);
   playerShell(e.name,
     '<div class="orb-wrap"><div class="orb-ring"></div><div class="orb '+(cfg.kind==='co2'?'co2':'')+'" id="orb"></div><div class="orb-count" id="pcount"></div></div>'+
     '<div class="phase" id="phase">Prêt ?</div>'+
@@ -578,7 +647,7 @@ function playPacer(e){
   $('#pgo').onclick=function(){$('#pgo').remove();runPacer(e);};
 }
 async function runPacer(e){
-  const cfg=e.pacer,orb=$('#orb');
+  const cfg=pacerCfg(e),orb=$('#orb');
   let cycle=0,elapsed=0;const total=cfg.secs||0;
   const scaleFor=function(k){return k==='in'?1:k==='in2'?1.08:(k==='out'?0.55:(k==='hold'?1:0.55));};
   async function phaseCountdown(sec){
@@ -672,8 +741,9 @@ function playHold(e){
   };
 }
 
+function apneaCfg(e){var b=e.apnea,ov=timers[e.id]||{};return {rounds:ov.rounds!=null?ov.rounds:b.rounds,reduced:ov.reduced!=null?ov.reduced:b.reduced,recover:ov.recover!=null?ov.recover:b.recover,walkPrep:b.walkPrep};}
 async function playApnea(e){
-  const cf=e.apnea;let round=0,holds=[];
+  const cf=apneaCfg(e);let round=0,holds=[];
   playerShell(e.name,
     '<div class="phase" id="phase">'+(cf.walkPrep?'Marche ~1 min en respiration nasale':'Prépare-toi')+'</div>'+
     '<div class="bigtimer" id="ptimer" style="font-size:54px">—</div>'+
@@ -712,9 +782,9 @@ async function playApnea(e){
 }
 
 function playTable(e){
-  const bolt=lastBolt(),ret=load('sf_retmax',null);
-  let hold=ret?Math.round(ret/2):(bolt||20);
-  let rounds=8,rest0=Math.max(40,Math.round(75-0.7*(bolt||20)));
+  const bolt=lastBolt(),ret=load('sf_retmax',null),ov=timers['co2table']||{};
+  let hold=ov.hold!=null?ov.hold:(ret?Math.round(ret/2):(bolt||20));
+  let rounds=ov.rounds!=null?ov.rounds:8,rest0=ov.rest0!=null?ov.rest0:Math.max(40,Math.round(75-0.7*(bolt||20)));
   playerShell('Table CO₂',
     '<div class="phase">Réglages</div>'+
     '<div class="subt">Apnée constante, repos décroissant (−5 s). Respiration normale aux récups.</div>'+
@@ -759,9 +829,9 @@ async function runTable(hold,rounds,rest0){
 }
 
 function playO2Table(e){
-  const bolt=lastBolt(),ret=load('sf_retmax',null);
-  let hold0=ret?Math.round(ret/2):(bolt||20);
-  let rounds=6,rest=Math.max(60,Math.round(90-0.5*(bolt||20))),step=10;
+  const bolt=lastBolt(),ret=load('sf_retmax',null),ov=timers['o2table']||{};
+  let hold0=ov.hold0!=null?ov.hold0:(ret?Math.round(ret/2):(bolt||20));
+  let rounds=ov.rounds!=null?ov.rounds:6,rest=ov.rest!=null?ov.rest:Math.max(60,Math.round(90-0.5*(bolt||20))),step=ov.step!=null?ov.step:10;
   playerShell('Table O₂',
     '<div class="phase">Réglages</div>'+
     '<div class="subt">Apnée <b>croissante</b> (+<span id="vst">'+step+'</span> s), repos <b>fixe</b>. La SpO₂ baisse — accompagné conseillé.</div>'+
