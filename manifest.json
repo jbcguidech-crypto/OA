@@ -1,6 +1,6 @@
 {
-  "name": "OA — Respiration fonctionnelle",
-  "short_name": "OA",
+  "name": "OA 2.0 — Respiration fonctionnelle",
+  "short_name": "OA 2.0",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
