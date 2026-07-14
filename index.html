@@ -434,6 +434,11 @@ const EX=[
   steps:['D’abord 3-5 min de marche / jogging / vélo FACILES : ça évacue le lactate plus vite qu’assis.','Puis assieds-toi et lance la respiration lente pour faire redescendre le sympathique.','Inspire 4 s, retiens 7 s, expire 8 s.','~5 min ; reste nasal, ne sur-respire pas.'],
   safety:null, player:'pacer',
   pacer:{kind:'teal',phases:[{l:'Inspire (nez)',d:4,k:'in'},{l:'Retiens',d:7,k:'hold'},{l:'Expire (bouche)',d:8,k:'out'}],cycles:6,note:'Fais d’abord 3-5 min de récup active légère, puis ce souffle lent.'}},
+ {id:'recovwalk',cat:'reg',name:'Marche récup — petites apnées',benefit:'Freine l’hyperventilation post-effort · remonte le CO₂ en douceur',
+  freq:'après un effort', dose:'~5 min de marche', nowatch:'Tenues comptées en pas, faim d’air LÉGÈRE',
+  setup:'Après un effort, en marchant au calme, respiration nasale. Tout doit rester confortable.',
+  steps:['Marche en respirant par le nez.','Expire normalement, pince le nez (ou garde le souffle) et marche 2-4 pas en apnée.','Reprends 3 respirations nasales calmes.','Recommence en allongeant un peu (5, puis 6-8 pas…), tant que ça reste FACILE.','Continue ~5 min ; si la faim d’air passe de légère à forte, raccourcis.'],
+  safety:'Faim d’air LÉGÈRE seulement — jamais forte (sinon c’est un stimulus, pas une récup). Jamais dans l’eau ni en conduisant.', player:'info'},
 ];
 const EXPLAIN={
  bolt:"Mesure ta tolérance au CO₂ et la qualité de ton souffle. Plus le score monte, mieux tu supportes le manque d’air — donc plus tu respires efficacement, au repos comme à l’effort. C’est ta jauge quotidienne pour calibrer l’entraînement.",
@@ -468,7 +473,8 @@ const EXPLAIN={
  hast:"La simulation d’altitude : des apnées répétées pendant la marche font descendre l’oxygène du sang vers des niveaux proches de la moyenne altitude, ce qui entraîne ta tolérance à l’hypoxie sans matériel. La reprise en respiration réduite prolonge l’effet ; en jogging, la désaturation est plus marquée.",
  sharkfit:"Même principe que la simulation d’altitude, mais tu ne t’arrêtes jamais : tu continues de marcher pendant la récupération. La charge cardio s’ajoute à l’hypoxie répétée — nettement plus intense, d’où la bonne santé requise.",
  recovend:"Après un effort long, le système nerveux redescend surtout tout seul — la respiration lente (~6/min) accélère le retour au parasympathique et améliore le sommeil. La priorité reste calme, hydratation, apport.",
- recovint:"Après un effort intense, il y a un fort pic sympathique et du lactate. Quelques minutes de mouvement léger évacuent le lactate plus vite qu’au repos ; puis la respiration lente rappelle le sympathique encore élevé. C’est là que le souffle aide le plus."
+ recovint:"Après un effort intense, il y a un fort pic sympathique et du lactate. Quelques minutes de mouvement léger évacuent le lactate plus vite qu’au repos ; puis la respiration lente rappelle le sympathique encore élevé. C’est là que le souffle aide le plus.",
+ recovwalk:"De petites tenues confortables en marchant freinent la sur-respiration qui suit l’effort et laissent remonter le CO₂ en douceur (effet Bohr) — ça aide à revenir au nasal et peut limiter le resserrement des voies aériennes (asthme d’effort). Le nasal réchauffe et humidifie l’air, ce qui protège davantage. À garder léger : au-delà d’une faim d’air légère tu bascules dans le stimulus hypoxique, contre-productif en récup. Effet réel sur les symptômes, mais pas un traitement — avis médical si asthme d’effort avéré."
 };
 function exById(id){return EX.find(e=>e.id===id);}
 function exByCat(c){return EX.filter(e=>e.cat===c);}
@@ -1273,7 +1279,7 @@ function safetyGate(force){
   o.querySelector('#ackBtn').onclick=function(){save('sf_safety',true);o.remove();};
 }
 if(settings.light&&document.body)document.body.classList.add('light');
-var APP_VERSION='1.6';
+var APP_VERSION='1.7';
 var _v=document.getElementById('ver');if(_v)_v.textContent='v'+APP_VERSION;
 var wakeLock=null;
 async function requestWake(){try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');}}catch(e){}}
