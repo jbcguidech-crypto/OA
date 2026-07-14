@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#0f1a1a">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💨</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>😤</text></svg>">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Souffle · Respiration fonctionnelle</title>
+<title>OA · Respiration fonctionnelle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -164,7 +164,7 @@ body.light .brand .ver{color:var(--faint)}
 <body>
 <div class="app">
   <div class="bar">
-    <div class="brand"><span class="dot"></span> Souffle <span class="ver" id="ver"></span></div>
+    <div class="brand"><span class="dot"></span> OA <span class="ver" id="ver"></span></div>
     <button class="boltchip" onclick="go('detail','bolt')">
       <span>BOLT</span><b id="chipBolt">—</b><small id="chipZone"></small>
     </button>
@@ -1279,7 +1279,7 @@ function safetyGate(force){
   o.querySelector('#ackBtn').onclick=function(){save('sf_safety',true);o.remove();};
 }
 if(settings.light&&document.body)document.body.classList.add('light');
-var APP_VERSION='1.7';
+var APP_VERSION='1.9';
 var _v=document.getElementById('ver');if(_v)_v.textContent='v'+APP_VERSION;
 var wakeLock=null;
 async function requestWake(){try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');}}catch(e){}}
@@ -1295,8 +1295,8 @@ function showInstallBar(mode){
   if(document.querySelector('.installbar'))return;
   var bar=el('div','installbar');
   var txt=(mode==='ios')
-    ? '<b>Installer Souffle</b><br>Appuie sur Partager, puis « Sur l\u2019écran d\u2019accueil ».'
-    : '<b>Installer Souffle</b><br>Accès rapide et hors-ligne, comme une appli.';
+    ? '<b>Installer OA</b><br>Appuie sur Partager, puis « Sur l\u2019écran d\u2019accueil ».'
+    : '<b>Installer OA</b><br>Accès rapide et hors-ligne, comme une appli.';
   var btn=(mode==='ios')?'':'<button class="ib-btn" id="ibInstall">Installer</button>';
   bar.innerHTML='<div class="ib-ic"></div><div class="ib-tx">'+txt+'</div>'+btn+'<button class="ib-x" id="ibX" aria-label="Fermer">\u00d7</button>';
   document.body.appendChild(bar);
