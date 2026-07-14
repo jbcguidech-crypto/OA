@@ -136,6 +136,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .sw.on::after{left:23px}
 .disclaimer{font-size:11px;color:var(--faint);line-height:1.5;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
 input[type=range]{accent-color:var(--teal)}
+.search{width:100%;margin:6px 0 4px;background:var(--card);border:1px solid var(--line2);border-radius:12px;color:var(--ink);padding:12px 14px;font-family:inherit;font-size:15px}
+.search::placeholder{color:var(--faint)}
 .overlay{position:fixed;inset:0;z-index:80;background:rgba(4,12,12,.74);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--card);border:1px solid var(--line2);border-radius:20px 20px 0 0;max-width:560px;width:100%;padding:20px 20px calc(24px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto;animation:fade .3s ease}
 .sheet h2{font-size:22px;margin:2px 0 10px}
@@ -402,6 +404,24 @@ const EX=[
   steps:['Marche ~1 min en respiration nasale.','Expire normalement, pince le nez et marche en apnée.','Va jusqu’à une faim d’air FORTE (proche du max), sans aller au malaise.','Note les pas tenus. Récupère : 6 souffles nettoyants, reste calme.'],
   safety:'Effort quasi-max : accompagné, jamais dans l’eau, stop au moindre vertige. Applique la règle du demi-BOLT si ton BOLT est bas.', player:'apnea',
   apnea:{rounds:1,reduced:15,recover:60,walkPrep:true}},
+ {id:'warmup',cat:'co2',name:'Échauffement — petites apnées',benefit:'Amorce en douceur la tolérance au CO₂ avant une séance',
+  freq:'avant une séance', dose:'~10 petites apnées de 5 s', nowatch:'Alterne 5 s de tenue / 10 s de respiration normale',
+  setup:'Assis, détendu, respiration nasale. Doit rester facile, jamais stressant.',
+  steps:['Respire normalement par le nez ~10 s.','Après une expiration normale, pince le nez et retiens 5 s (3 s seulement si la faim d’air monte trop).','Relâche, reprends une respiration normale et calme ~10 s.','Répète une dizaine de fois.'],
+  safety:'Reste très doux : c’est un échauffement, pas une table.', player:'pacer',
+  pacer:{kind:'teal',phases:[{l:'Respire normalement',d:10,k:'out'},{l:'Retiens (pince le nez)',d:5,k:'hold'}],cycles:10,note:'Petites apnées de 5 s. Aucune tension : baisse à 3 s si besoin.'}},
+ {id:'hast',cat:'co2',name:'Simulation d’altitude',benefit:'Fait chuter la SpO₂ (~altitude) · tolérance hypoxie/CO₂',
+  freq:'2-3×/sem', dose:'~5 apnées en marchant', nowatch:'Compte les pas tenus ; reprise en respiration réduite',
+  setup:'À jeun, terrain plat et dégagé, respiration nasale. Amorce par quelques petites apnées.',
+  steps:['Marche ~1 min en respirant par le nez.','Expire normalement, pince le nez et marche en apnée jusqu’à une faim d’air moyenne à forte.','Relâche et reprends en respiration RÉDUITE (petits souffles) quelques instants.','Récupère normalement, puis recommence (~5 fois).','Progression : quand c’est aisé, passe en petit jogging pendant l’apnée pour désaturer davantage.'],
+  safety:'Jamais dans l’eau ni en conduisant. BOLT ≥ 20. Faim d’air moyenne-forte, jamais maximale.', player:'apnea',
+  apnea:{rounds:5,reduced:15,recover:30,walkPrep:true}},
+ {id:'sharkfit',cat:'mov',name:'Shark Fit',benefit:'Simulation d’altitude en continu · cardio + hypoxie répétée',
+  freq:'1-2×/sem', dose:'5 apnées sans t’arrêter', nowatch:'Marche sans interruption ; compte les pas tenus',
+  setup:'Bonne santé requise, BOLT ≥ 20. Terrain plat et dégagé. Version continue de la simulation d’altitude.',
+  steps:['Marche en continu par le nez.','Expire, pince le nez et marche en apnée jusqu’à une faim d’air moyenne à forte.','Relâche mais CONTINUE de marcher en respiration réduite — tu ne t’arrêtes jamais.','Enchaîne ~5 apnées sans pause debout.'],
+  safety:'Réservé aux personnes en bonne santé. Jamais dans l’eau, sol plat, stop au moindre vertige.', player:'apnea',
+  apnea:{rounds:5,reduced:20,recover:25,walkPrep:true}},
 ];
 const EXPLAIN={
  bolt:"Mesure ta tolérance au CO₂ et la qualité de ton souffle. Plus le score monte, mieux tu supportes le manque d’air — donc plus tu respires efficacement, au repos comme à l’effort. C’est ta jauge quotidienne pour calibrer l’entraînement.",
@@ -431,15 +451,19 @@ const EXPLAIN={
  band:"Une bande souple autour des côtes te donne un repère pour apprendre l’expansion latérale 360° : tu respires en poussant les côtes vers l’extérieur, poitrine et épaules calmes.",
  ribmob:"La souplesse des côtes et du buste laisse plus de place aux poumons et détend les tensions qui raccourcissent l’apnée. Chez toi, c’est le levier le mieux établi pour allonger l’apnée max — plus que forcer sur le CO₂.",
  diadrop:"Un diaphragme souple et relâché respire plus amplement et se contracte moins vite en apnée. Le relâchement compte autant que la force : c’est un travail de détente, pas d’effort.",
- mbt:"Le MBT mesure ta capacité réelle d’apnée en mouvement, distincte du BOLT (qui reflète surtout ta sensibilité au CO₂). Comme c’est un effort quasi-max, c’est un stimulus : une fois par semaine, dans la fenêtre où le nez est dégagé, accompagné."
+ mbt:"Le MBT mesure ta capacité réelle d’apnée en mouvement, distincte du BOLT (qui reflète surtout ta sensibilité au CO₂). Comme c’est un effort quasi-max, c’est un stimulus : une fois par semaine, dans la fenêtre où le nez est dégagé, accompagné.",
+ warmup:"Une série de petites apnées de 5 s entrecoupées de respiration normale : ça relève légèrement le CO₂ et prépare le corps avant une séance, sans fatigue. À garder facile — c’est un échauffement.",
+ hast:"La simulation d’altitude : des apnées répétées pendant la marche font descendre l’oxygène du sang vers des niveaux proches de la moyenne altitude, ce qui entraîne ta tolérance à l’hypoxie sans matériel. La reprise en respiration réduite prolonge l’effet ; en jogging, la désaturation est plus marquée.",
+ sharkfit:"Même principe que la simulation d’altitude, mais tu ne t’arrêtes jamais : tu continues de marcher pendant la récupération. La charge cardio s’ajoute à l’hypoxie répétée — nettement plus intense, d’où la bonne santé requise."
 };
 function exById(id){return EX.find(e=>e.id===id);}
 function exByCat(c){return EX.filter(e=>e.cat===c);}
 
-let cur='home';let showDone=false;
+let cur='home';let showDone=false;let showAdjust=false;
 function doneMap(){var t=todayISO(),m={};sessions.forEach(function(s){if((s.t||'').slice(0,10)===t)m[s.name]=1;});return m;}
 function setNav(n){document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.nav===n));}
 function go(where,arg){
+  if(where!=='detail')showAdjust=false;
   cur=where;const v=$('#view');
   if(where==='home'){renderHome(v);setNav('home');}
   else if(where==='cats'){renderCats(v);setNav('cats');}
@@ -505,11 +529,10 @@ function renderHome(v){
 function dayBlock(s){
   // bloc du midi selon le jour de semaine, calibré par la zone (0=dim..6=sam)
   var d=new Date().getDay();
-  if(s<30){ // reprise : intensité modérée, souplesse très présente
-    return [null,['apnea','ribmob'],['co2table'],['apnea','diadrop'],null,['co2table','ribmob'],['apnea','mbt']][d]||null;
-  }
-  // programme complet
-  return [null,['apnea','ribmob'],['vhl'],['co2table','diadrop'],null,['o2table'],['apnea','ribmob','mbt']][d]||null;
+  var wk = s<30
+    ? [null,['warmup','apnea','ribmob'],['warmup','co2table'],['warmup','apnea','diadrop'],null,['warmup','co2table','ribmob'],['warmup','apnea','mbt']]
+    : [null,['warmup','hast','ribmob'],['warmup','vhl'],['warmup','co2table','diadrop'],null,['warmup','o2table'],['warmup','sharkfit','mbt']];
+  return wk[d]||null;
 }
 function dayPlan(){
   var s=lastBolt(),r=readiness();
@@ -532,11 +555,14 @@ function dayPlan(){
   return plan;
 }
 
+function norm(x){return (x||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
 function renderCats(v){
   v.innerHTML='';
   v.appendChild(el('div','kicker','Bibliothèque'));
   v.appendChild(el('h1','h-hero display','Exercices'));
-  v.appendChild(el('p','lead','Chaque exercice détaille la mise en place, l’exécution pas à pas, la dose, la fréquence et un repère sans montre.'));
+  var srch=el('input','search');srch.type='search';srch.placeholder='Rechercher un exercice…';srch.setAttribute('inputmode','search');
+  v.appendChild(srch);
+  var res=el('div');v.appendChild(res);
   const g=el('div','tiles');
   CATS.forEach(cat=>{
     const t=el('button','tile');t.onclick=()=>go('catlist',cat.id);
@@ -545,7 +571,15 @@ function renderCats(v){
       '<div><h3>'+cat.name+'</h3><small>'+cat.desc+'</small></div>';
     g.appendChild(t);
   });
-  v.appendChild(g);
+  function draw(q){
+    res.innerHTML='';q=norm(q);
+    if(!q){res.appendChild(g);return;}
+    var hits=EX.filter(function(e){return norm(e.name+' '+e.benefit).indexOf(q)>=0;});
+    if(!hits.length){res.appendChild(el('p','muted','Aucun résultat.'));return;}
+    hits.forEach(function(e){res.appendChild(exRow(e));});
+  }
+  srch.oninput=function(){draw(srch.value);};
+  draw('');
 }
 function renderCatList(v,catId){
   const cat=CATS.find(c=>c.id===catId);v.innerHTML='';
@@ -585,7 +619,9 @@ function renderDetail(v,id){
   const b=el('div','block');
   b.innerHTML='<div class="field-t">Mise en place</div><div class="muted" style="margin-bottom:12px">'+e.setup+'</div><div class="field-t">Exécution</div>';
   const ol=el('ol','steps');e.steps.forEach(s=>ol.appendChild(el('li',null,s)));b.appendChild(ol);v.appendChild(b);
-  if(e.player==='pacer'){
+  var _adj=(e.player==='pacer'||e.player==='apnea'||e.player==='table'||e.player==='o2table');
+  if(_adj){var _atxt=(e.player==='pacer')?'Ajuster les durées':'Régler les valeurs par défaut';var _abtn=el('button','btn sm ghost block',(showAdjust?'Masquer les réglages':'⚙ '+_atxt));_abtn.style.marginTop='10px';_abtn.onclick=function(){showAdjust=!showAdjust;go('detail',e.id);};v.appendChild(_abtn);}
+  if(showAdjust&&e.player==='pacer'){
     var _pc=e.pacer,_ov=timers[e.id]||{};
     var _is='width:74px;text-align:right;background:var(--card2);border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:6px;font-family:inherit;font-size:14px';
     var tblk=el('div','block');var html='<div class="field-t">Ajuster les durées</div>';
@@ -599,7 +635,7 @@ function renderDetail(v,id){
     bs.onclick=function(){var o={},phs=[];document.querySelectorAll('.tPh').forEach(function(inp){var val=parseFloat(inp.value);phs[+inp.dataset.ph]=(isNaN(val)||val<=0)?_pc.phases[+inp.dataset.ph].d:val;});o.phases=phs;var ts=document.getElementById('tSecs');if(ts){var mn=parseInt(ts.value,10);if(mn>0)o.secs=mn*60;}var tc=document.getElementById('tCyc');if(tc){var cy=parseInt(tc.value,10);if(cy>0)o.cycles=cy;}timers[e.id]=o;save('sf_timers',timers);beep(740,0.1);vibe(20);go('detail',e.id);};
     br.onclick=function(){delete timers[e.id];save('sf_timers',timers);go('detail',e.id);};
   }
-  if(e.player==='apnea'){
+  if(showAdjust&&e.player==='apnea'){
     var _is='width:74px;text-align:right;background:var(--card2);border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:6px;font-family:inherit;font-size:14px';var _ov=timers[e.id]||{},_cf=e.apnea;
     var _tb=el('div','block');
     _tb.innerHTML='<div class="field-t">Réglages par défaut</div>'+
@@ -611,7 +647,7 @@ function renderDetail(v,id){
     _bsv.onclick=function(){var r=parseInt(document.getElementById('aR').value,10),rd=parseInt(document.getElementById('aRed').value,10),rc=parseInt(document.getElementById('aRec').value,10);var o={};if(r>0)o.rounds=r;if(rd>=0)o.reduced=rd;if(rc>0)o.recover=rc;timers[e.id]=o;save('sf_timers',timers);beep(740,0.1);vibe(20);go('detail',e.id);};
     _brs.onclick=function(){delete timers[e.id];save('sf_timers',timers);go('detail',e.id);};
   }
-  if(e.player==='table'){
+  if(showAdjust&&e.player==='table'){
     var _is='width:74px;text-align:right;background:var(--card2);border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:6px;font-family:inherit;font-size:14px';var _ov=timers[e.id]||{},_b=lastBolt(),_r=load('sf_retmax',null);
     var _dh=_r?Math.round(_r/2):(_b||20),_drest=Math.max(40,Math.round(75-0.7*(_b||20)));
     var _tb=el('div','block');
@@ -624,7 +660,7 @@ function renderDetail(v,id){
     _bsv.onclick=function(){var h=parseInt(document.getElementById('cH').value,10),r=parseInt(document.getElementById('cR').value,10),rs=parseInt(document.getElementById('cRest').value,10);var o={};if(h>0)o.hold=h;if(r>0)o.rounds=r;if(rs>0)o.rest0=rs;timers[e.id]=o;save('sf_timers',timers);beep(740,0.1);vibe(20);go('detail',e.id);};
     _brs.onclick=function(){delete timers[e.id];save('sf_timers',timers);go('detail',e.id);};
   }
-  if(e.player==='o2table'){
+  if(showAdjust&&e.player==='o2table'){
     var _is='width:74px;text-align:right;background:var(--card2);border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:6px;font-family:inherit;font-size:14px';var _ov=timers[e.id]||{},_b=lastBolt(),_r=load('sf_retmax',null);
     var _dh=_r?Math.round(_r/2):(_b||20),_drest=Math.max(60,Math.round(90-0.5*(_b||20)));
     var _tb=el('div','block');
@@ -1223,7 +1259,7 @@ function safetyGate(force){
   o.querySelector('#ackBtn').onclick=function(){save('sf_safety',true);o.remove();};
 }
 if(settings.light&&document.body)document.body.classList.add('light');
-var APP_VERSION='1.3';
+var APP_VERSION='1.5';
 var _v=document.getElementById('ver');if(_v)_v.textContent='v'+APP_VERSION;
 var wakeLock=null;
 async function requestWake(){try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');}}catch(e){}}
